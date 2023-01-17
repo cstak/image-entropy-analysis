@@ -17,7 +17,7 @@ namespace ImageEntropy
         //iterations for key derivation 
         private static readonly int iterations = 100_000;
         ///Encrypt a byte array using Aes block encryption
-        public static byte[] Encrypt(byte[] plainBytes, string password)
+        public static string Encrypt(byte[] plainBytes, string password)
         {
             byte[] encryptedBytes;
             using (Aes aes = Aes.Create())
@@ -37,10 +37,10 @@ namespace ImageEntropy
                     encryptedBytes = ms.ToArray();
                 }
             }
-            return encryptedBytes;
+            return Convert.ToBase64String(encryptedBytes);
         }
         ///Decrypt a byte array using Aes block encryption
-        public static byte[] Decrypt(byte[] cryptoBytes, string password)
+        public static string Decrypt(byte[] cryptoBytes, string password)
         {
             byte[] plainBytes;
             using (Aes aes = Aes.Create())
@@ -60,7 +60,7 @@ namespace ImageEntropy
                     plainBytes = ms.ToArray();
                 }
             }
-            return plainBytes;
+            return Convert.ToBase64String(plainBytes);
         }
     }
 }

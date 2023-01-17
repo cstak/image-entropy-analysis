@@ -24,10 +24,8 @@ void EncryptImageAndCalculateEntropy()
         Console.WriteLine($"Entropy of Image is: {Entropy.CalculateEntropy(image)}");
         byte[] pixelBytes = new byte[image.Width * image.Height * Unsafe.SizeOf<Rgb24>()];
         image.CopyPixelDataTo(pixelBytes);
-        Console.WriteLine($"Plain bytes: {pixelBytes[0]}");
-        byte[] encrBytes = Helper.Encrypt(pixelBytes, password: "myPassword");
-        Console.WriteLine($"Cipher bytes: {encrBytes[0]}");
-        using (var encrImage = Image.LoadPixelData<Rgb24>(encrBytes, image.Width, image.Height))
+        string encrBytesBase64 = Helper.Encrypt(pixelBytes, password: "myPassword");
+        using (var encrImage = Image.LoadPixelData<Rgb24>(Convert.FromBase64String(encrBytesBase64), image.Width, image.Height))
         {
             encrImage.Save(Path.Combine(EncrFolder, "encrBaboon.bmp"));
             Console.WriteLine($"Entropy of Encrypted Image is: {Entropy.CalculateEntropy(encrImage)}");
@@ -40,10 +38,8 @@ void DecryptImage()
     {
         byte[] pixelBytes = new byte[image.Width * image.Height * Unsafe.SizeOf<Rgb24>()];
         image.CopyPixelDataTo(pixelBytes);
-        Console.WriteLine($"cipher bytes: {pixelBytes[0]}");
-        byte[] decrBytes = Helper.Decrypt(pixelBytes, password: "myPassword");
-        Console.WriteLine($"Plain bytes: {decrBytes[0]}");
-        using (var decrImage = Image.LoadPixelData<Rgb24>(decrBytes, image.Width, image.Height))
+        string decrBytesBase64 = Helper.Decrypt(pixelBytes, password: "myPassword");
+        using (var decrImage = Image.LoadPixelData<Rgb24>(Convert.FromBase64String(decrBytesBase64), image.Width, image.Height))
         {
             decrImage.Save(Path.Combine(DecrFolder, "decrBaboon.bmp"));
         }

@@ -7,7 +7,7 @@ using SixLabors.ImageSharp.PixelFormats;
 namespace ImageEntropy
 {
     /// <summary>
-    /// The <c>ImageEntropy</c> class.
+    /// The <c>Entropy</c> class.
     /// Contains all methods for calculating information entropy of an image.
     /// </summary>
     public class Entropy
@@ -18,6 +18,7 @@ namespace ImageEntropy
             double entropi = 0;
             for (int i = 0; i < 256; i++)
             {
+                //Calculate only for one pixel value(R or G or B) because of the image is gray.
                 if (imageHistogram.red[i] == 0)
                     continue;
                 else //Shannon function
@@ -40,7 +41,7 @@ namespace ImageEntropy
                     {
                         // Get a reference to the pixel at position x
                         ref Rgb24 pixel = ref pixelRow[x];
-                        //Fill the histogram arrays with number of appearance of current pixel values (RGB)
+                        //Populate histogram arrays with the number of appearances of valid pixel values (RGB)
                         red[pixel.R]++;
                         green[pixel.G]++;
                         blue[pixel.B]++;
