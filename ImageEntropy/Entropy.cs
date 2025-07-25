@@ -1,64 +1,71 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-namespace ImageEntropy
+
+
+namespace ImageEntropy;
+
+/// <summary>
+/// The <c>Entropy</c> class.
+/// Contains all methods for calculating information entropy of an image.
+/// </summary>
+public static class Entropy
 {
     /// <summary>
-    /// The <c>Entropy</c> class.
-    /// Contains all methods for calculating information entropy of an image.
+    /// Calculates the information entropy for the Red, Green, and Blue channels of an image separately.
     /// </summary>
-    public class Entropy
+    /// <returns>A Tuple containing the entropy values for each channel (R, G, B).</returns>
+    public static (double Red, double Green, double Blue) CalculateRgbEntropy(Image<Rgb24> image)
     {
-        public static double CalculateEntropy(Image<Rgb24> image)
-        {
-            var imageHistogram = ImageHistogram(image);
-            double entropi = 0;
-            for (int i = 0; i < 256; i++)
+        var histogram = CreateImageHistogram(image);
+        double totalPixels = image.Width * image.Height;
+
+        double redEntropy = CalculateChannelEntropy(histogram.Red, totalPixels);
+        double greenEntropy = CalculateChannelEntropy(histogram.Green, totalPixels);
+        double blueEntropy = CalculateChannelEntropy(histogram.Blue, totalPixels);
+
+        return (redEntropy, greenEntropy, blueEntropy);
+    }
+
+    /// <summary>
+    /// Calculates the entropy from the histogram data of a single color channel.
+    /// </summary>
+    private static double CalculateChannelEntropy(int[] channelHistogram, double totalPixels)
+    {
+        double entropy = channelHistogram
+            .Where(frequency => frequency > 0)
+            .Select(frequency =>
             {
-                //Calculate only for one pixel value(R or G or B) because of the image is gray.
-                if (imageHistogram.red[i] == 0)
-                    continue;
-                else //Shannon function
-                    entropi += CalculateProbability(imageHistogram.red[i], imageHistogram.red) * Math.Log((1 / CalculateProbability(imageHistogram.red[i], imageHistogram.red)), 2);
-            }
-            return entropi;
-        }
-        static (int[] red, int[] green, int[] blue) ImageHistogram(Image<Rgb24> image)
+                double probability = frequency / totalPixels;
+                return probability * Math.Log2(probability);
+            })
+            .Sum();
+
+        return -entropy;
+    }
+
+    /// <summary>
+    /// Creates a color histogram for an image.
+    /// </summary>
+    private static Histogram CreateImageHistogram(Image<Rgb24> image)
+    {
+        int[] red = new int[256];
+        int[] green = new int[256];
+        int[] blue = new int[256];
+
+        image.ProcessPixelRows(accessor =>
         {
-            //histogram arrays of the pixel values
-            int[] red = new int[256];
-            int[] green = new int[256];
-            int[] blue = new int[256];
-            image.ProcessPixelRows(accessor =>
+            for (int y = 0; y < accessor.Height; y++)
             {
-                for (int y = 0; y < accessor.Height; y++)
+                Span<Rgb24> row = accessor.GetRowSpan(y);
+                foreach (ref Rgb24 pixel in row)
                 {
-                    Span<Rgb24> pixelRow = accessor.GetRowSpan(y);
-                    for (int x = 0; x < pixelRow.Length; x++)
-                    {
-                        // Get a reference to the pixel at position x
-                        ref Rgb24 pixel = ref pixelRow[x];
-                        //Populate histogram arrays with the number of appearances of valid pixel values (RGB)
-                        red[pixel.R]++;
-                        green[pixel.G]++;
-                        blue[pixel.B]++;
-                    }
+                    red[pixel.R]++;
+                    green[pixel.G]++;
+                    blue[pixel.B]++;
                 }
-            });
-            return (red, green, blue);
-        }
-        static double CalculateProbability(int j, int[] k) => j / TotalPixelValue(k);
-        static double TotalPixelValue(int[] i)
-        {
-            double totalValue = 0;
-            for (int k = 0; k < 256; k++)
-            {
-                totalValue += i[k];
             }
-            return totalValue;
-        }
+        });
+
+        return new Histogram { Red = red, Green = green, Blue = blue };
     }
 }

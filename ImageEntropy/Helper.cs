@@ -1,66 +1,64 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-namespace ImageEntropy
+
+namespace ImageEntropy;
+
+/// <summary>
+/// Provides AES encryption and decryption for byte arrays using password-based key derivation.
+/// </summary>
+public static class Helper
 {
+    private const int SaltSize = 16;
+    private const int KeySize = 32;
+    private const int IvSize = 16;
+    private const int Iterations = 100_000;
+    private static readonly HashAlgorithmName _hashAlgorithm = HashAlgorithmName.SHA256;
+
     /// <summary>
-    /// The <c>Helper</c> class.
-    /// Performs encryption and decryption of a byte array.
+    /// Encrypts a byte array with AES using the given password.
     /// </summary>
-    public class Helper
+    public static byte[] Encrypt(byte[] plainBytes, string password)
     {
-        //16 bytes salt
-        private static readonly byte[] salt = Encoding.Unicode.GetBytes("MySalt");
-        //iterations for key derivation 
-        private static readonly int iterations = 100_000;
-        ///Encrypt a byte array using Aes block encryption
-        public static string Encrypt(byte[] plainBytes, string password)
+        byte[] salt = RandomNumberGenerator.GetBytes(SaltSize);
+        using var aes = Aes.Create();
+        aes.Padding = PaddingMode.PKCS7;
+
+        using var keyDerivation = new Rfc2898DeriveBytes(password, salt, Iterations, _hashAlgorithm);
+        aes.Key = keyDerivation.GetBytes(KeySize);
+        aes.IV = keyDerivation.GetBytes(IvSize);
+
+        using var memoryStream = new MemoryStream();
+        memoryStream.Write(salt, 0, salt.Length);
+
+        using (var cryptoStream = new CryptoStream(memoryStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
         {
-            byte[] encryptedBytes;
-            using (Aes aes = Aes.Create())
-            {
-                using (Rfc2898DeriveBytes pbkdf2 = new(password, salt, iterations, HashAlgorithmName.SHA256))
-                {
-                    aes.Padding = PaddingMode.Zeros;
-                    aes.Key = pbkdf2.GetBytes(32); // 256-bit key                   
-                    aes.IV = pbkdf2.GetBytes(16); // 128-bit IV
-                }
-                using (MemoryStream ms = new())
-                {
-                    using (CryptoStream cs = new(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
-                    {
-                        cs.Write(plainBytes, 0, plainBytes.Length);
-                    }
-                    encryptedBytes = ms.ToArray();
-                }
-            }
-            return Convert.ToBase64String(encryptedBytes);
+            cryptoStream.Write(plainBytes, 0, plainBytes.Length);
         }
-        ///Decrypt a byte array using Aes block encryption
-        public static string Decrypt(byte[] cryptoBytes, string password)
+        return memoryStream.ToArray();
+    }
+
+    /// <summary>
+    /// Decrypts an encrypted byte array (prefixed with a salt).
+    /// </summary>
+    public static byte[] Decrypt(byte[] encryptedBytesWithSalt, string password)
+    {
+        byte[] salt = new byte[SaltSize];
+        Array.Copy(encryptedBytesWithSalt, 0, salt, 0, SaltSize);
+
+        byte[] encryptedData = new byte[encryptedBytesWithSalt.Length - SaltSize];
+        Array.Copy(encryptedBytesWithSalt, SaltSize, encryptedData, 0, encryptedData.Length);
+
+        using var aes = Aes.Create();
+        aes.Padding = PaddingMode.PKCS7;
+
+        using var keyDerivation = new Rfc2898DeriveBytes(password, salt, Iterations, _hashAlgorithm);
+        aes.Key = keyDerivation.GetBytes(KeySize);
+        aes.IV = keyDerivation.GetBytes(IvSize);
+
+        using var memoryStream = new MemoryStream();
+        using (var cryptoStream = new CryptoStream(memoryStream, aes.CreateDecryptor(), CryptoStreamMode.Write))
         {
-            byte[] plainBytes;
-            using (Aes aes = Aes.Create())
-            {
-                using (Rfc2898DeriveBytes pbkdf2 = new(password, salt, iterations, HashAlgorithmName.SHA256))
-                {
-                    aes.Padding = PaddingMode.Zeros;
-                    aes.Key = pbkdf2.GetBytes(32);
-                    aes.IV = pbkdf2.GetBytes(16);
-                }
-                using (MemoryStream ms = new())
-                {
-                    using (CryptoStream cs = new(ms, aes.CreateDecryptor(), CryptoStreamMode.Write))
-                    {
-                        cs.Write(cryptoBytes, 0, cryptoBytes.Length);
-                    }
-                    plainBytes = ms.ToArray();
-                }
-            }
-            return Convert.ToBase64String(plainBytes);
+            cryptoStream.Write(encryptedData, 0, encryptedData.Length);
         }
+        return memoryStream.ToArray();
     }
 }
